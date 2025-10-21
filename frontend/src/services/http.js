@@ -1,9 +1,24 @@
 import axios from 'axios';
 import sessionStorageManager from './sessionStorageManager';
 
+// Compute a safe default baseURL that works in production behind Nginx
+function computeBaseURL() {
+  // 1) Highest priority: explicit env
+  if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL;
+
+  // 2) In browser, follow current origin and hit /api (Nginx proxy)
+  if (typeof window !== 'undefined' && window.location) {
+    const origin = window.location.origin.replace(/\/$/, '');
+    return origin + '/api';
+  }
+
+  // 3) Fallbacks for docker/dev environments (node context)
+  return 'http://dacn_backend_dev:3001/api';
+}
+
 const http = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || (typeof window !== 'undefined' ? 'http://localhost:3001/api' : 'http://dacn_backend_dev:3001/api'),
-  withCredentials: false, // Changed to false for Docker
+  baseURL: computeBaseURL(),
+  withCredentials: false, // false for Docker; cookies not used currently
 });
 
 // Attach Authorization header, TabId, and normalize URLs
@@ -19,9 +34,8 @@ http.interceptors.request.use(
         }
       }
       
-      // Get token from sessionStorage ONLY (tab-specific) - no localStorage fallback
+      // Get token from tab-scoped session storage
       var token = sessionStorageManager.getToken();
-      
       // Get tabId
       var tabId = sessionStorageManager.getTabId();
       
@@ -32,7 +46,7 @@ http.interceptors.request.use(
         config.headers.Authorization = 'Bearer ' + token;
       }
       
-      // Attach tabId to header
+      // Attach tabId to header for multi-tab session awareness
       if (tabId) {
         config.headers = config.headers || {};
         config.headers['X-Tab-Id'] = tabId;

@@ -82,7 +82,9 @@ export default function ActivityDetail(){
         data.tep_dinh_kem.map((url, idx) => {
           const filename = url.split('/').pop();
           // ✅ Fix: Prepend backend base URL for attachments
-          const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+          const baseURL = (typeof window !== 'undefined' && window.location)
+            ? window.location.origin.replace(/\/$/, '') + '/api'
+            : (process.env.REACT_APP_API_URL || 'http://dacn_backend_dev:3001/api');
           const backendBase = baseURL.replace('/api', ''); // Remove /api to get base server URL
           const downloadUrl = url.startsWith('http') ? url : `${backendBase}${url}`;
           

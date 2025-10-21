@@ -1,0 +1,25 @@
+{
+  "classId": "4189c612-a5e2-47ee-88b1-be11e6c1af3b",
+  "semester": "hoc_ky_1",
+  "year": "2025",
+  "state": "ACTIVE",
+  "version": 2,
+  "history": [
+    {
+      "state": "LOCKED_HARD",
+      "timestamp": "2025-10-21T17:31:28.336Z",
+      "actor": "test-script",
+      "reason": "Test simulation"
+    },
+    {
+      "state": "ACTIVE",
+      "timestamp": "2025-10-21T17:31:28.476Z",
+      "actor": "test-script-reactivate",
+      "reason": "Auto-unlocked by semester re-activation (TEST)"
+    }
+  ],
+  "lock_level": null,
+  "closed_by": null,
+  "closed_at": null,
+  "grace_until": null
+}

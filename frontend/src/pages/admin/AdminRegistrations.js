@@ -148,7 +148,9 @@ const AdminRegistrations = () => {
         status: statusFilter || '',
         classId: classId || ''
       });
-      const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+      const baseURL = (typeof window !== 'undefined' && window.location)
+        ? window.location.origin.replace(/\/$/, '') + '/api'
+        : (process.env.REACT_APP_API_URL || 'http://dacn_backend_dev:3001/api');
       window.location.href = `${baseURL}/admin/registrations/export?${params}`;
     } catch (error) {
       console.error('Lỗi khi xuất Excel:', error);

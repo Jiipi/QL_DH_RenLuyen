@@ -15,55 +15,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [errors, setErrors] = React.useState({});
   const [isLoading, setIsLoading] = React.useState(false);
-  const [demoAccounts, setDemoAccounts] = React.useState([]);
-
-  React.useEffect(function loadDemo() {
-    let mounted = true;
-    // Only load demo accounts if not already loaded
-    if (demoAccounts.length > 0) return;
-    
-    http
-      .get('/auth/demo-accounts')
-      .then(function (res) {
-        if (!mounted) return;
-        var payload = res.data?.data || [];
-        // Ensure shape + stable key
-        const sanitized = (payload || []).map(function(acc){
-          return {
-            username: acc.username,
-            email: acc.email,
-            password: acc.password,
-            name: acc.name
-          };
-        });
-        // If backend returns empty (e.g. DB not seeded yet) provide fallback defaults
-        if (sanitized.length === 0) {
-          setDemoAccounts([
-            { username: 'admin', email: 'admin@dlu.edu.vn', password: 'Admin@123', name: 'Quản trị viên' },
-            { username: 'gv001', email: 'nguyenvana@dlu.edu.vn', password: 'Teacher@123', name: 'Giảng viên' },
-            { username: 'lt001', email: 'tranvanc@dlu.edu.vn', password: 'Monitor@123', name: 'Lớp trưởng' },
-            { username: '2021003', email: '2021003@dlu.edu.vn', password: 'Student@123', name: 'Sinh viên' }
-          ]);
-        } else {
-          setDemoAccounts(sanitized);
-        }
-      })
-      .catch(function (err) {
-        if (!mounted) return;
-        console.warn('Failed to load demo accounts:', err.message);
-        // Provide fallback so UI still useful offline / error state
-        setDemoAccounts([
-          { username: 'admin', email: 'admin@dlu.edu.vn', password: 'Admin@123', name: 'Quản trị viên' },
-          { username: 'gv001', email: 'nguyenvana@dlu.edu.vn', password: 'Teacher@123', name: 'Giảng viên' },
-          { username: 'lt001', email: 'tranvanc@dlu.edu.vn', password: 'Monitor@123', name: 'Lớp trưởng' },
-          { username: '2021003', email: '2021003@dlu.edu.vn', password: 'Student@123', name: 'Sinh viên' }
-        ]);
-      })
-      .finally(function () {});
-    return function cleanup() {
-      mounted = false;
-    };
-  }, [demoAccounts.length]);
+  // Production login: no demo accounts, no extra fetching
 
   function handleInputChange(e) {
     const name = e.target.name;
@@ -80,12 +32,32 @@ export default function Login() {
     }
   }
 
-  async function loginWithDemo(username, password) {
-    setErrors({});
+  // Removed loginWithDemo – production UI does not expose demo users
+
+  function validateForm() {
+    var newErrors = {};
+    if (!formData.username) {
+      newErrors.username = 'Vui lòng nhập tên đăng nhập hoặc email';
+    }
+    if (!formData.password) {
+      newErrors.password = 'Vui lòng nhập mật khẩu';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!validateForm()) return;
     setIsLoading(true);
-    setFormData({ username: username || '', password: password || '' });
     try {
-      var res = await http.post('/auth/login', { maso: username, password: password });
+      // FIX: Chỉ trim, KHÔNG toLowerCase để tránh lỗi login khác nhau giữa PC và mobile
+      var res = await http.post('/auth/login', { 
+        maso: String(formData.username || '').trim(), 
+        password: formData.password 
+      });
       var data = res.data?.data || res.data;
       var token = data?.token || data?.data?.token;
       if (token) {
@@ -131,62 +103,6 @@ export default function Login() {
     }
   }
 
-  function validateForm() {
-    var newErrors = {};
-    if (!formData.username) {
-      newErrors.username = 'Vui lòng nhập tên đăng nhập hoặc email';
-    }
-    if (!formData.password) {
-      newErrors.password = 'Vui lòng nhập mật khẩu';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự';
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!validateForm()) return;
-    setIsLoading(true);
-    try {
-      var res = await http.post('/auth/login', { maso: String(formData.username || '').trim().toLowerCase(), password: formData.password });
-      var data = res.data?.data || res.data;
-      var token = data?.token || data?.data?.token;
-      if (token) {
-        var user = data?.user || null;
-        var roleRaw = (user?.role || user?.roleCode || '').toString();
-        var role = normalizeRole(roleRaw);
-        
-        // Save session tab + backup to localStorage để tab mới có thể khởi tạo session
-        saveTabSession({ token, user, role });
-        try {
-          window.localStorage.setItem('token', token);
-          window.localStorage.setItem('user', JSON.stringify(user));
-        } catch(_) {}
-        
-        // Set auth in Zustand store
-        try { setAuth({ token, user, role }); } catch(_) {}
-        
-        var target = '/';
-        if (role === 'ADMIN') target = '/admin';
-        else if (role === 'GIANG_VIEN') target = '/teacher';
-        else if (role === 'LOP_TRUONG') target = '/monitor';
-        else if (role === 'SINH_VIEN' || role === 'STUDENT') target = '/student';
-        
-        console.log('[Login] Logged in with role:', role, 'to tab:', sessionStorageManager.getTabId());
-        navigate(target);
-      } else {
-        setErrors({ submit: 'Đăng nhập thất bại' });
-      }
-    } catch (err) {
-      var message = err?.response?.data?.message || 'Đăng nhập không thành công. Vui lòng kiểm tra thông tin.';
-      setErrors({ submit: message });
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
   const submitError = errors.submit
     ? React.createElement(
         'div',
@@ -195,20 +111,27 @@ export default function Login() {
       )
     : null;
 
-  // Left: Form per requested design
+  // Left: Form per requested design with enhanced UI
   const leftForm = React.createElement(
     'div',
-    { className: 'flex-1 w-full md:w-1/2 flex items-center justify-center p-6 md:p-12 lg:p-16' },
+    { className: 'flex-1 w-full md:w-1/2 flex items-center justify-center p-6 md:p-12 lg:p-16 bg-white' },
     React.createElement(
       'div',
-      { className: 'w-full max-w-md' },
+      { className: 'w-full max-w-md animate-fade-in' },
       [
         React.createElement(
           'div',
           { key: 'hdr', className: 'mb-8 text-center md:text-left' },
           [
-            React.createElement('h1', { key: 'h1', className: 'text-3xl font-bold text-gray-900 mb-2' }, 'Đăng nhập'),
-            React.createElement('p', { key: 'p', className: 'text-gray-600' }, 'Chào mừng trở lại! Vui lòng đăng nhập vào tài khoản của bạn.'),
+            React.createElement('div', { key: 'logo-mobile', className: 'mb-4 md:hidden flex justify-center' }, 
+              React.createElement('img', {
+                src: 'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/a409cac8-3a40-4097-9461-db92841b1a22.png',
+                alt: 'Logo',
+                className: 'w-16 h-16 rounded-xl shadow-lg object-cover',
+              })
+            ),
+            React.createElement('h1', { key: 'h1', className: 'text-3xl md:text-4xl font-bold text-gray-900 mb-2' }, 'Đăng nhập'),
+            React.createElement('p', { key: 'p', className: 'text-gray-600 text-sm md:text-base' }, 'Chào mừng trở lại! Vui lòng đăng nhập vào tài khoản của bạn.'),
           ]
         ),
         React.createElement(
@@ -233,6 +156,11 @@ export default function Login() {
                       value: formData.username || '',
                       onChange: function onChange(e) { handleInputChange(e); },
                       name: 'username',
+                      autoCapitalize: 'none',
+                      autoCorrect: 'off',
+                      spellCheck: false,
+                      inputMode: 'text',
+                      autoComplete: 'username',
                       className: 'w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors',
                       placeholder: 'Nhập tên đăng nhập hoặc email',
                       required: true,
@@ -262,6 +190,10 @@ export default function Login() {
                       value: formData.password || '',
                       onChange: function onChange(e) { handleInputChange(e); },
                       name: 'password',
+                      autoCapitalize: 'none',
+                      autoCorrect: 'off',
+                      spellCheck: false,
+                      autoComplete: 'current-password',
                       className: 'w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors',
                       placeholder: 'Nhập mật khẩu',
                       required: true,
@@ -280,11 +212,24 @@ export default function Login() {
             ),
             // Submit error
             submitError,
-            // Submit
+            // Submit button with loading animation
             React.createElement(
               'button',
-              { key: 'submit', type: 'submit', className: 'w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors', disabled: isLoading },
-              isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'
+              { 
+                key: 'submit', 
+                type: 'submit', 
+                className: 'w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg hover:shadow-xl', 
+                disabled: isLoading 
+              },
+              isLoading ? 
+                React.createElement('span', { className: 'flex items-center justify-center' }, [
+                  React.createElement('svg', { key: 'spinner', className: 'animate-spin -ml-1 mr-3 h-5 w-5 text-white', xmlns: 'http://www.w3.org/2000/svg', fill: 'none', viewBox: '0 0 24 24' }, [
+                    React.createElement('circle', { key: 'c1', className: 'opacity-25', cx: '12', cy: '12', r: '10', stroke: 'currentColor', strokeWidth: '4' }),
+                    React.createElement('path', { key: 'p1', className: 'opacity-75', fill: 'currentColor', d: 'M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z' })
+                  ]),
+                  React.createElement('span', { key: 'txt' }, 'Đang đăng nhập...')
+                ]) : 
+                'Đăng nhập'
             ),
             // Links
             React.createElement(
@@ -308,13 +253,17 @@ export default function Login() {
     )
   );
 
-  // Right: Logo + demo info
+  // Right: Branding panel (no demo list)
   const rightPanel = React.createElement(
     'div',
-    { className: 'flex-1 w-full md:w-1/2 bg-gradient-to-br from-blue-600 to-blue-800 text-white p-6 md:p-12 lg:p-16 flex flex-col justify-center items-center overflow-hidden' },
-    React.createElement(
+    { className: 'hidden md:flex flex-1 w-full md:w-1/2 bg-gradient-to-br from-blue-600 via-blue-700 to-purple-800 text-white p-6 md:p-12 lg:p-16 flex-col justify-center items-center overflow-hidden relative' },
+    [
+      // Animated background circles
+      React.createElement('div', { key: 'bg1', className: 'absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-pulse' }),
+      React.createElement('div', { key: 'bg2', className: 'absolute bottom-0 left-0 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl animate-pulse delay-1000' }),
+      React.createElement(
       'div',
-      { className: 'text-center max-w-md' },
+      { key: 'content', className: 'text-center max-w-md relative z-10' },
       [
         React.createElement(
           'div',
@@ -325,42 +274,10 @@ export default function Login() {
             className: 'mx-auto w-24 h-24 rounded-xl shadow-lg object-cover',
           })
         ),
-        React.createElement(
-          'div',
-          { key: 'demo', className: 'bg-white/10 backdrop-blur-sm rounded-xl p-6 shadow-lg overflow-auto max-h-full w-full' },
-          [
-            React.createElement('h2', { key: 'title', className: 'text-xl font-semibold mb-4 flex items-center justify-between' }, [
-              'Tài khoản Demo',
-              React.createElement('span', { key: 'hint', className: 'text-xs font-normal bg-white/20 px-2 py-1 rounded-md' }, 'Mật khẩu hiển thị sẵn')
-            ]),
-            React.createElement(
-              'ul',
-              { key: 'list', className: 'space-y-2 text-sm' },
-              (demoAccounts.length > 0 ? demoAccounts : []).map(function(acc, idx){
-                return React.createElement(
-                  'li',
-                  { key: acc.username || String(idx), className: 'rounded-md bg-white/15 px-4 py-3 flex items-center justify-between' },
-                  [
-                    React.createElement('div', { key: 'info-' + idx }, [
-                      React.createElement('div', { key: 'u-' + idx, className: 'font-mono' }, acc.username + (acc.email ? ' • ' + acc.email : '')),
-                      React.createElement('div', { key: 'p-' + idx, className: 'text-blue-100' }, 'Pass: ' + (acc.password || '***')),
-                    ]),
-                    React.createElement('button', {
-                      key: 'use-' + idx,
-                      type: 'button',
-                      className: 'text-xs px-3 py-1 rounded-md bg-white text-blue-700 hover:bg-gray-100',
-                      onClick: function onClick(){ loginWithDemo(acc.username, acc.password || ''); },
-                    }, 'Dùng')
-                  ]
-                );
-              })
-            ),
-            React.createElement('div', { key: 'pw-note', className: 'mt-4 text-left text-xs text-blue-100 space-y-1' }, [
-              React.createElement('p', { key: 'line1' }, 'Các mật khẩu phía trên là plaintext demo. Trong CSDL, chúng được lưu dạng hash bcrypt.'),
-              React.createElement('p', { key: 'line2' }, 'Nếu không đăng nhập được hãy kiểm tra: tên đăng nhập đúng / trạng thái tài khoản / đồng bộ DB.'),
-            ]),
-          ]
-        ),
+        React.createElement('div', { key: 'brand', className: 'bg-white/10 backdrop-blur-sm rounded-xl p-6 shadow-lg w-full text-left space-y-3' }, [
+          React.createElement('h2', { key: 't', className: 'text-xl font-semibold' }, 'Hệ thống quản lý hoạt động rèn luyện'),
+          React.createElement('p', { key: 'd', className: 'text-sm text-blue-100' }, 'Theo dõi, đăng ký, phê duyệt và thống kê hoạt động rèn luyện một cách nhanh chóng và hiệu quả.'),
+        ]),
         React.createElement(
           'div',
           { key: 'more', className: 'mt-8 text-blue-100' },
@@ -374,7 +291,8 @@ export default function Login() {
           ]
         ),
       ]
-    )
+    ),
+    ]
   );
 
   return React.createElement('div', { className: 'min-h-screen w-full bg-gray-50 flex flex-col md:flex-row items-stretch' }, [leftForm, rightPanel]);

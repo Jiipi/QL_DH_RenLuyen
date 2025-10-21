@@ -419,15 +419,57 @@ router.post('/activate', requirePermission('admin.semesters.manage'), async (req
       }
     }
     
-    console.log(`[SEMESTER] Activated ${semester}, locked ${lockedCount} classes`);
+    // 4. Mở khóa tất cả lớp của học kỳ mới được kích hoạt (nếu đã bị khóa)
+    let unlockedCount = 0;
+    const [new_hoc_ky, new_year] = semester.split('-');
+    const newSemKey = `${new_hoc_ky}_${new_year}`;
+    const semesterDir = path.join(__dirname, '../../data/semesters');
+    
+    try {
+      if (fs.existsSync(semesterDir)) {
+        const classes = fs.readdirSync(semesterDir).filter(f => 
+          fs.statSync(path.join(semesterDir, f)).isDirectory()
+        );
+        
+        for (const classId of classes) {
+          const newStatePath = path.join(semesterDir, classId, newSemKey, 'state.json');
+          if (fs.existsSync(newStatePath)) {
+            const state = JSON.parse(fs.readFileSync(newStatePath, 'utf8'));
+            // Mở khóa nếu đang bị khóa
+            if (state.state === 'LOCKED_HARD' || state.state === 'LOCKED_SOFT') {
+              state.state = 'ACTIVE';
+              state.lock_level = null;
+              state.grace_until = null;
+              state.closed_by = null;
+              state.closed_at = null;
+              state.history = state.history || [];
+              state.history.push({
+                state: 'ACTIVE',
+                timestamp: new Date().toISOString(),
+                actor: req.user?.sub || 'admin',
+                reason: 'Auto-unlocked by semester re-activation'
+              });
+              state.version = (state.version || 1) + 1;
+              fs.writeFileSync(newStatePath, JSON.stringify(state, null, 2));
+              unlockedCount++;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[SEMESTER /activate] Error unlocking classes:', e);
+    }
+    
+    console.log(`[SEMESTER] Activated ${semester}, locked ${lockedCount} classes, unlocked ${unlockedCount} classes`);
     
     return res.json({
       success: true,
-      message: 'Kích hoạt học kỳ thành công',
+      message: `Kích hoạt học kỳ thành công. Đã khóa ${lockedCount} lớp, mở khóa ${unlockedCount} lớp.`,
       data: {
         new_active: semester,
         old_active: oldActive,
-        locked_classes: lockedCount
+        locked_classes: lockedCount,
+        unlocked_classes: unlockedCount
       }
     });
   } catch (e) {
