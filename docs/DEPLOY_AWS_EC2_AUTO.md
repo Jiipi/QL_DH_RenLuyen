@@ -80,10 +80,43 @@ ssh -i your-key.pem ubuntu@<EC2-PUBLIC-IP>
 ### 2.2. Clone repository
 
 ```bash
+# Di chuyển về thư mục home
 cd ~
-git clone https://github.com/YOUR_USERNAME/DACN_Web_quanly_hoatdongrenluyen-master.git app
+
+# Clone repository vào thư mục "app"
+# Thư mục đầy đủ sẽ là: /home/ubuntu/app
+git clone git@github.com:Jiipi/QL_DH_RenLuyen.git app
+
+# Di chuyển vào thư mục app
 cd app
+
+# Kiểm tra xem clone thành công chưa
+pwd
+# Output: /home/ubuntu/app
 ```
+
+**📂 Cấu trúc thư mục trên EC2:**
+```
+/home/ubuntu/
+└── app/                    ← Repository code ở đây
+    ├── backend/
+    ├── frontend/
+    ├── scripts/
+    ├── nginx/
+    ├── docker-compose.production.yml
+    └── ...
+```
+
+**⚠️ LƯU Ý:**
+- **Tất cả scripts và configs đều giả định code ở `/home/ubuntu/app`**
+- Nếu clone vào thư mục khác, phải sửa lại các file:
+  - `scripts/deploy.sh`
+  - `scripts/webhook.service`
+  - `nginx/hoatdongrenluyen.conf`
+- Nếu gặp "Host key verification failed", chạy lệnh sau rồi thử lại:
+  ```bash
+  ssh-keyscan github.com >> ~/.ssh/known_hosts
+  ```
 
 ### 2.3. Chạy script setup tự động
 
