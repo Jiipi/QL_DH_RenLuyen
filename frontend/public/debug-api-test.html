@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Connection Test</title>
+</head>
+<body>
+    <h1>API Connection Test</h1>
+    <button onclick="testLogin()">Test Login</button>
+    <button onclick="testUsers()">Test Users API</button>
+    <div id="result"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:3001/api';
+        
+        async function testLogin() {
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ maso: 'admin', password: 'Admin@123' })
+                });
+                const data = await response.json();
+                console.log('Login response:', data);
+                if (data.success) {
+                    localStorage.setItem('token', data.data.token);
+                    document.getElementById('result').innerHTML = `<p>✅ Login successful! Token saved.</p>`;
+                } else {
+                    document.getElementById('result').innerHTML = `<p>❌ Login failed: ${data.message}</p>`;
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                document.getElementById('result').innerHTML = `<p>❌ Login error: ${error.message}</p>`;
+            }
+        }
+
+        async function testUsers() {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    document.getElementById('result').innerHTML = `<p>❌ No token found. Please login first.</p>`;
+                    return;
+                }
+                
+                const response = await fetch(`${API_BASE}/admin/users`, {
+                    method: 'GET',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json' 
+                    }
+                });
+                const data = await response.json();
+                console.log('Users response:', data);
+                
+                if (data.success) {
+                    const users = data.data?.users?.users || [];
+                    document.getElementById('result').innerHTML = `
+                        <p>✅ Users API successful!</p>
+                        <p>Found ${users.length} users</p>
+                        <p>Response structure: ${JSON.stringify(Object.keys(data.data), null, 2)}</p>
+                        <p>Sample user: ${users[0]?.ho_ten || 'N/A'}</p>
+                    `;
+                } else {
+                    document.getElementById('result').innerHTML = `<p>❌ Users API failed: ${data.message}</p>`;
+                }
+            } catch (error) {
+                console.error('Users API error:', error);
+                document.getElementById('result').innerHTML = `<p>❌ Users API error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

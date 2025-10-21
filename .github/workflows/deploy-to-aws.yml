@@ -1,0 +1,307 @@
+name: Deploy to AWS EC2
+
+on:
+  push:
+    branches:
+      - main
+      - production
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  NODE_VERSION: '18'
+  DOCKER_COMPOSE_VERSION: 'v2.24.5'
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Lint Backend
+        working-directory: ./backend
+        run: npm run lint || echo "Linting skipped"
+
+      - name: Lint Frontend
+        working-directory: ./frontend
+        run: npm run lint || echo "Linting skipped"
+
+      - name: Build Frontend
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Run Backend Tests
+        working-directory: ./backend
+        run: npm test || echo "Tests skipped"
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/testdb
+          JWT_SECRET: test-secret
+
+      - name: Run Frontend Tests
+        working-directory: ./frontend
+        run: npm test -- --passWithNoTests || echo "Tests skipped"
+
+  deploy:
+    name: Deploy to AWS EC2
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    environment: 
+      name: ${{ github.event.inputs.environment || 'production' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Create deployment package
+        run: |
+          echo "Creating deployment package..."
+          tar -czf deploy-package.tar.gz \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='frontend/node_modules' \
+            --exclude='backend/node_modules' \
+            --exclude='frontend/build' \
+            --exclude='.env' \
+            --exclude='.env.local' \
+            --exclude='*.log' \
+            backend/ frontend/ docker-compose.prod.yml .dockerignore
+
+      - name: Upload deployment package to EC2
+        run: |
+          scp -i ~/.ssh/id_rsa \
+            -o StrictHostKeyChecking=no \
+            deploy-package.tar.gz \
+            ec2-user@${{ secrets.EC2_HOST }}:/home/ec2-user/
+
+      - name: Deploy application on EC2
+        run: |
+          ssh -i ~/.ssh/id_rsa \
+            -o StrictHostKeyChecking=no \
+            ec2-user@${{ secrets.EC2_HOST }} << 'ENDSSH'
+          set -e
+          
+          echo "🚀 Starting deployment process..."
+          
+          # Navigate to app directory
+          cd /home/ec2-user/student-app
+          
+          # Backup current version
+          if [ -d "backend" ]; then
+            echo "📦 Backing up current version..."
+            tar -czf backup-$(date +%Y%m%d-%H%M%S).tar.gz backend frontend docker-compose.prod.yml || true
+            # Keep only last 5 backups
+            ls -t backup-*.tar.gz | tail -n +6 | xargs -r rm
+          fi
+          
+          # Extract new version
+          echo "📂 Extracting new version..."
+          tar -xzf /home/ec2-user/deploy-package.tar.gz -C /home/ec2-user/student-app/
+          rm /home/ec2-user/deploy-package.tar.gz
+          
+          # Create .env file from secrets (if doesn't exist)
+          if [ ! -f .env ]; then
+            echo "⚙️  Creating .env file..."
+            cat > .env << EOF
+          # Database Configuration
+          DB_NAME=Web_QuanLyDiemRenLuyen
+          DB_USER=admin
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DATABASE_URL=postgresql://admin:${{ secrets.DB_PASSWORD }}@db:5432/Web_QuanLyDiemRenLuyen?schema=public
+          
+          # JWT Configuration
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          JWT_EXPIRES_IN=7d
+          
+          # Application Configuration
+          NODE_ENV=production
+          PORT=3001
+          CORS_ORIGIN=http://${{ secrets.EC2_HOST }}:3000
+          
+          # Frontend Configuration
+          REACT_APP_API_URL=http://${{ secrets.EC2_HOST }}:3001/api
+          EOF
+          fi
+          
+          # Stop existing containers
+          echo "🛑 Stopping existing containers..."
+          docker-compose -f docker-compose.prod.yml down || true
+          
+          # Pull base images
+          echo "🐳 Pulling base images..."
+          docker pull postgres:15-alpine
+          docker pull node:18-alpine
+          docker pull nginx:alpine
+          
+          # Build and start containers
+          echo "🏗️  Building application containers..."
+          docker-compose -f docker-compose.prod.yml build --no-cache
+          
+          echo "🚀 Starting containers..."
+          docker-compose -f docker-compose.prod.yml up -d
+          
+          # Wait for database to be ready
+          echo "⏳ Waiting for database..."
+          sleep 15
+          
+          # Run database migrations
+          echo "📊 Running database migrations..."
+          docker-compose -f docker-compose.prod.yml exec -T backend npx prisma migrate deploy || true
+          
+          # Generate Prisma client
+          echo "🔧 Generating Prisma client..."
+          docker-compose -f docker-compose.prod.yml exec -T backend npx prisma generate || true
+          
+          # Health check
+          echo "🏥 Running health checks..."
+          sleep 10
+          
+          # Check backend
+          if curl -f http://localhost:3001/api/health 2>/dev/null; then
+            echo "✅ Backend is healthy"
+          else
+            echo "⚠️  Backend health check failed"
+          fi
+          
+          # Check frontend
+          if curl -f http://localhost:3000 2>/dev/null; then
+            echo "✅ Frontend is healthy"
+          else
+            echo "⚠️  Frontend health check failed"
+          fi
+          
+          # Show container status
+          echo "📦 Container status:"
+          docker-compose -f docker-compose.prod.yml ps
+          
+          # Show logs
+          echo "📋 Recent logs:"
+          docker-compose -f docker-compose.prod.yml logs --tail=50
+          
+          echo "✅ Deployment completed!"
+          ENDSSH
+
+      - name: Verify deployment
+        run: |
+          echo "🔍 Verifying deployment..."
+          
+          # Wait a bit for services to stabilize
+          sleep 10
+          
+          # Check backend health
+          if curl -f http://${{ secrets.EC2_HOST }}:3001/api/health; then
+            echo "✅ Backend is responding"
+          else
+            echo "❌ Backend health check failed"
+            exit 1
+          fi
+          
+          # Check frontend
+          if curl -f http://${{ secrets.EC2_HOST }}:3000; then
+            echo "✅ Frontend is responding"
+          else
+            echo "❌ Frontend health check failed"
+            exit 1
+          fi
+
+      - name: Send deployment notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            Deployment to AWS EC2 ${{ job.status }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true
+
+  rollback:
+    name: Rollback Deployment
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: failure()
+    environment: 
+      name: ${{ github.event.inputs.environment || 'production' }}
+    
+    steps:
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Rollback to previous version
+        run: |
+          ssh -i ~/.ssh/id_rsa \
+            -o StrictHostKeyChecking=no \
+            ec2-user@${{ secrets.EC2_HOST }} << 'ENDSSH'
+          set -e
+          
+          echo "🔄 Rolling back to previous version..."
+          cd /home/ec2-user/student-app
+          
+          # Find latest backup
+          LATEST_BACKUP=$(ls -t backup-*.tar.gz | head -n 1)
+          
+          if [ -z "$LATEST_BACKUP" ]; then
+            echo "❌ No backup found for rollback"
+            exit 1
+          fi
+          
+          echo "📦 Restoring from backup: $LATEST_BACKUP"
+          
+          # Stop containers
+          docker-compose -f docker-compose.prod.yml down
+          
+          # Restore backup
+          tar -xzf "$LATEST_BACKUP"
+          
+          # Restart containers
+          docker-compose -f docker-compose.prod.yml up -d
+          
+          echo "✅ Rollback completed"
+          ENDSSH

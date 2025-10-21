@@ -1,0 +1,8 @@
+/* Minimal placeholder to satisfy imports after cleanup */
+:root {
+  --sidebar-w: 288px;
+}
+
+.sidebar-placeholder { display: contents; }
+
+

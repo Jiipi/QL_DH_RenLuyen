@@ -1,0 +1,433 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'EC2 Infrastructure for Student Activity Management System - Full Stack Application'
+
+Parameters:
+  KeyPairName:
+    Description: Name of an existing EC2 KeyPair for SSH access
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: Must be the name of an existing EC2 KeyPair
+
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t3.medium
+    AllowedValues:
+      - t3.small
+      - t3.medium
+      - t3.large
+      - t3.xlarge
+    ConstraintDescription: Must be a valid EC2 instance type
+
+  VolumeSize:
+    Description: EBS volume size in GB
+    Type: Number
+    Default: 30
+    MinValue: 20
+    MaxValue: 100
+
+  AllowedSSHIP:
+    Description: IP address range allowed to SSH (CIDR notation). Use 0.0.0.0/0 for all IPs (not recommended for production)
+    Type: String
+    Default: 0.0.0.0/0
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Instance Configuration"
+        Parameters:
+          - InstanceType
+          - VolumeSize
+      - Label:
+          default: "Security Configuration"
+        Parameters:
+          - KeyPairName
+          - AllowedSSHIP
+
+Resources:
+  # VPC and Networking
+  StudentAppVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: StudentApp-VPC
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: StudentApp-IGW
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref StudentAppVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref StudentAppVPC
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: StudentApp-PublicSubnet
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref StudentAppVPC
+      Tags:
+        - Key: Name
+          Value: StudentApp-PublicRouteTable
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  # Security Groups
+  StudentAppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: StudentApp-SG
+      GroupDescription: Security group for Student Activity Management System
+      VpcId: !Ref StudentAppVPC
+      SecurityGroupIngress:
+        # SSH access
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref AllowedSSHIP
+          Description: SSH access
+        # HTTP access
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: HTTP access
+        # HTTPS access
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS access
+        # Application port (Backend API)
+        - IpProtocol: tcp
+          FromPort: 3001
+          ToPort: 3001
+          CidrIp: 0.0.0.0/0
+          Description: Backend API
+        # Frontend port
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          CidrIp: 0.0.0.0/0
+          Description: Frontend application
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic
+      Tags:
+        - Key: Name
+          Value: StudentApp-SecurityGroup
+
+  # IAM Role for EC2 Instance
+  StudentAppEC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Tags:
+        - Key: Name
+          Value: StudentApp-EC2-Role
+
+  StudentAppInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref StudentAppEC2Role
+
+  # EC2 Instance
+  StudentAppInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Sub '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}'
+      KeyName: !Ref KeyPairName
+      IamInstanceProfile: !Ref StudentAppInstanceProfile
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: 0
+          GroupSet:
+            - !Ref StudentAppSecurityGroup
+          SubnetId: !Ref PublicSubnet
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: !Ref VolumeSize
+            VolumeType: gp3
+            DeleteOnTermination: true
+            Encrypted: true
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -e
+          
+          # Log output
+          exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+          echo "Starting user data script..."
+          
+          # Update system
+          dnf update -y
+          
+          # Install required packages
+          dnf install -y \
+            docker \
+            git \
+            curl \
+            wget \
+            unzip \
+            vim \
+            htop \
+            postgresql15 \
+            jq
+          
+          # Start and enable Docker
+          systemctl enable docker
+          systemctl start docker
+          
+          # Install Docker Compose V2
+          DOCKER_COMPOSE_VERSION="v2.24.5"
+          curl -L "https://github.com/docker/compose/releases/download/${!DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" \
+            -o /usr/local/bin/docker-compose
+          chmod +x /usr/local/bin/docker-compose
+          ln -sf /usr/local/bin/docker-compose /usr/bin/docker-compose
+          
+          # Add ec2-user to docker group
+          usermod -a -G docker ec2-user
+          
+          # Install AWS CLI v2 (if not present)
+          if ! command -v aws &> /dev/null; then
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+            unzip -q /tmp/awscliv2.zip -d /tmp
+            /tmp/aws/install
+            rm -rf /tmp/aws /tmp/awscliv2.zip
+          fi
+          
+          # Create application directories
+          mkdir -p /home/ec2-user/student-app
+          mkdir -p /home/ec2-user/student-app/backups
+          mkdir -p /home/ec2-user/student-app/logs
+          mkdir -p /home/ec2-user/student-app/scripts
+          
+          # Create deployment script
+          cat > /home/ec2-user/student-app/deploy.sh << 'DEPLOYEOF'
+          #!/bin/bash
+          set -e
+          
+          echo "🚀 Starting deployment..."
+          cd /home/ec2-user/student-app
+          
+          # Pull latest changes
+          if [ -d ".git" ]; then
+            echo "📥 Pulling latest code..."
+            git pull origin main
+          fi
+          
+          # Stop existing containers
+          echo "🛑 Stopping existing containers..."
+          docker-compose down || true
+          
+          # Build and start containers
+          echo "🏗️  Building containers..."
+          docker-compose build --no-cache
+          
+          echo "🚀 Starting containers..."
+          docker-compose up -d
+          
+          # Wait for services to be ready
+          echo "⏳ Waiting for services to start..."
+          sleep 15
+          
+          # Run database migrations
+          echo "📊 Running database migrations..."
+          docker-compose exec -T backend npx prisma migrate deploy || true
+          
+          # Health check
+          echo "🏥 Running health check..."
+          sleep 5
+          if curl -f http://localhost:3001/api/health 2>/dev/null; then
+            echo "✅ Deployment completed successfully!"
+          else
+            echo "⚠️  Warning: Health check failed, but deployment completed"
+          fi
+          
+          # Show running containers
+          echo "📦 Running containers:"
+          docker-compose ps
+          DEPLOYEOF
+          
+          chmod +x /home/ec2-user/student-app/deploy.sh
+          
+          # Create backup script
+          cat > /home/ec2-user/student-app/backup.sh << 'BACKUPEOF'
+          #!/bin/bash
+          set -e
+          
+          BACKUP_DIR="/home/ec2-user/student-app/backups"
+          DATE=$(date +%Y%m%d_%H%M%S)
+          BACKUP_FILE="$BACKUP_DIR/backup_$DATE.sql"
+          
+          echo "📦 Starting database backup..."
+          
+          # Create backup directory if not exists
+          mkdir -p "$BACKUP_DIR"
+          
+          # Backup database
+          docker-compose exec -T db pg_dump -U admin Web_QuanLyDiemRenLuyen > "$BACKUP_FILE"
+          
+          # Compress backup
+          gzip "$BACKUP_FILE"
+          
+          echo "✅ Backup completed: $BACKUP_FILE.gz"
+          
+          # Delete backups older than 7 days
+          find "$BACKUP_DIR" -name "*.sql.gz" -mtime +7 -delete
+          
+          echo "🧹 Old backups cleaned up"
+          BACKUPEOF
+          
+          chmod +x /home/ec2-user/student-app/backup.sh
+          
+          # Create monitoring script
+          cat > /home/ec2-user/student-app/monitor.sh << 'MONITOREOF'
+          #!/bin/bash
+          
+          echo "=== System Status ==="
+          echo ""
+          
+          echo "📊 Disk Usage:"
+          df -h / | tail -n 1
+          echo ""
+          
+          echo "💾 Memory Usage:"
+          free -h
+          echo ""
+          
+          echo "🐳 Docker Containers:"
+          docker-compose ps
+          echo ""
+          
+          echo "📈 Docker Stats (5 sec snapshot):"
+          docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}"
+          echo ""
+          
+          echo "🔍 Recent Logs (last 20 lines):"
+          docker-compose logs --tail=20
+          MONITOREOF
+          
+          chmod +x /home/ec2-user/student-app/monitor.sh
+          
+          # Set ownership
+          chown -R ec2-user:ec2-user /home/ec2-user/student-app
+          
+          # Setup CloudWatch agent (optional)
+          # wget https://s3.amazonaws.com/amazoncloudwatch-agent/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm
+          # rpm -U ./amazon-cloudwatch-agent.rpm
+          
+          # Create a success marker
+          touch /home/ec2-user/student-app/.initialized
+          
+          echo "✅ User data script completed successfully!"
+      Tags:
+        - Key: Name
+          Value: StudentApp-EC2-Instance
+        - Key: Environment
+          Value: Production
+        - Key: Application
+          Value: Student-Activity-Management
+
+  # Elastic IP (Optional but recommended for production)
+  StudentAppEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: StudentApp-EIP
+
+  EIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      InstanceId: !Ref StudentAppInstance
+      EIP: !Ref StudentAppEIP
+
+Outputs:
+  InstanceId:
+    Description: EC2 Instance ID
+    Value: !Ref StudentAppInstance
+    Export:
+      Name: !Sub '${AWS::StackName}-InstanceId'
+
+  PublicIP:
+    Description: Public IP address (Elastic IP)
+    Value: !Ref StudentAppEIP
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicIP'
+
+  PublicDNS:
+    Description: Public DNS of the EC2 instance
+    Value: !GetAtt StudentAppInstance.PublicDnsName
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicDNS'
+
+  SSHCommand:
+    Description: SSH command to connect to the instance
+    Value: !Sub 'ssh -i "your-key.pem" ec2-user@${StudentAppEIP}'
+
+  ApplicationURL:
+    Description: Application URL
+    Value: !Sub 'http://${StudentAppEIP}:3000'
+
+  APIURL:
+    Description: Backend API URL
+    Value: !Sub 'http://${StudentAppEIP}:3001/api'
+
+  SecurityGroupId:
+    Description: Security Group ID
+    Value: !Ref StudentAppSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-SecurityGroupId'
+
+  VPCId:
+    Description: VPC ID
+    Value: !Ref StudentAppVPC
+    Export:
+      Name: !Sub '${AWS::StackName}-VPCId'

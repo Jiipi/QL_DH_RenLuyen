@@ -1,0 +1,36 @@
+﻿DEPLOYMENT CHECKLIST
+
+Files trong package nay:
+- db_production.dump - Database backup
+- uploads_backup.zip - Uploaded files
+- backend.env.template - Backend environment template
+- frontend.env.template - Frontend environment template
+
+Buoc tiep theo:
+
+1. Upload files len EC2 bang WinSCP
+   - Ket noi WinSCP voi EC2 (dung .ppk key)
+   - Upload tat ca files vao: /home/ubuntu/dacn-web/backups/
+
+2. SSH vao EC2 bang PuTTY
+
+3. Clone repository
+   cd ~/dacn-web
+   git clone https://github.com/ThLin57/DACN_Web_quanly_hoatdongrenluyen.git app
+   cd app
+
+4. Tao .env files
+   nano ~/dacn-web/app/backend/.env
+   # Copy noi dung tu backend.env.template
+   # DOI: DATABASE_URL password, JWT_SECRET, CORS_ORIGIN
+
+5. Tao JWT Secret ngau nhien manh
+   openssl rand -base64 48
+   # Copy output va paste vao backend/.env
+
+6. Build va chay
+   docker compose --profile prod build
+   docker compose up -d db
+   docker compose --profile prod up -d app
+
+Xem huong dan day du: AWS_DEPLOYMENT_GUIDE.md

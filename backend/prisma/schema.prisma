@@ -1,0 +1,257 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Lop {
+  id             String     @id @default(uuid()) @db.Uuid
+  ten_lop        String     @unique @db.VarChar(30)
+  khoa           String     @db.VarChar(50)
+  nien_khoa      String     @db.VarChar(20)
+  nam_nhap_hoc   DateTime   @db.Date
+  nam_tot_nghiep DateTime?  @db.Date
+  chu_nhiem      String     @db.Uuid
+  lop_truong     String?    @db.Uuid
+  chu_nhiem_rel  NguoiDung  @relation("ChuNhiemLop", fields: [chu_nhiem], references: [id])
+  lop_truong_rel SinhVien?  @relation("LopTruongLop", fields: [lop_truong], references: [id])
+  sinh_viens     SinhVien[] @relation("SinhVienLop")
+
+  @@map("lop")
+}
+
+model VaiTro {
+  id          String      @id @default(uuid()) @db.Uuid
+  ten_vt      String      @unique @db.VarChar(50)
+  mo_ta       String?
+  quyen_han   Json?
+  ngay_tao    DateTime    @default(now()) @db.Timestamp(6)
+  nguoi_dungs NguoiDung[]
+
+  @@map("vai_tro")
+}
+
+model NguoiDung {
+  id                  String            @id @default(uuid()) @db.Uuid
+  ten_dn              String            @unique @db.VarChar(50)
+  mat_khau            String            @db.VarChar(255)
+  email               String            @unique @db.VarChar(100)
+  ho_ten              String?           @db.VarChar(50)
+  vai_tro_id          String            @db.Uuid
+  trang_thai          TrangThaiTaiKhoan @default(hoat_dong)
+  ngay_tao            DateTime          @default(now()) @db.Timestamp(6)
+  ngay_cap_nhat       DateTime          @default(now()) @updatedAt @db.Timestamp(6)
+  lan_cuoi_dn         DateTime?         @db.Timestamp(6)
+  token_reset         String?           @db.VarChar(255)
+  tg_het_han_token    DateTime?         @db.Timestamp(6)
+  anh_dai_dien        String?           @db.VarChar(255)
+  diem_danh_thuc_hien DiemDanh[]        @relation("NguoiDiemDanh")
+  hoat_dong_tao       HoatDong[]        @relation("NguoiTaoHoatDong")
+  lops_chu_nhiem      Lop[]             @relation("ChuNhiemLop")
+  vai_tro             VaiTro            @relation(fields: [vai_tro_id], references: [id])
+  sinh_vien           SinhVien?
+  thong_bao_gui       ThongBao[]        @relation("NguoiGuiThongBao")
+  thong_bao_nhan      ThongBao[]        @relation("NguoiNhanThongBao")
+
+  @@map("nguoi_dung")
+}
+
+model SinhVien {
+  id                  String           @id @default(uuid()) @db.Uuid
+  nguoi_dung_id       String           @unique @db.Uuid
+  mssv                String           @unique @db.VarChar(10)
+  ngay_sinh           DateTime         @db.Date
+  gt                  GioiTinh?
+  lop_id              String           @db.Uuid
+  dia_chi             String?
+  sdt                 String?          @db.VarChar(10)
+  email               String?          @db.VarChar(100)
+  dang_ky_hd          DangKyHoatDong[]
+  diem_danh           DiemDanh[]
+  lop_truong          Lop[]            @relation("LopTruongLop")
+  lop                 Lop              @relation("SinhVienLop", fields: [lop_id], references: [id])
+  nguoi_dung          NguoiDung        @relation(fields: [nguoi_dung_id], references: [id])
+
+  @@map("sinh_vien")
+}
+
+model LoaiHoatDong {
+  id            String     @id @default(uuid()) @db.Uuid
+  ten_loai_hd   String     @unique @db.VarChar(50)
+  mo_ta         String?
+  diem_mac_dinh Decimal    @default(0.00) @db.Decimal(4, 2)
+  diem_toi_da   Decimal    @default(10.00) @db.Decimal(4, 2)
+  mau_sac       String?    @db.VarChar(7)
+  nguoi_tao_id  String?    @db.Uuid
+  ngay_tao      DateTime   @default(now()) @db.Timestamp(6)
+  hoat_dongs    HoatDong[]
+
+  @@map("loai_hoat_dong")
+}
+
+model HoatDong {
+  id                     String                  @id @default(uuid()) @db.Uuid
+  ma_hd                  String?                 @unique @db.VarChar(50)
+  ten_hd                 String                  @db.VarChar(200)
+  mo_ta                  String?
+  loai_hd_id             String                  @db.Uuid
+  diem_rl                Decimal                 @default(0.00) @db.Decimal(4, 2)
+  dia_diem               String?                 @db.VarChar(200)
+  ngay_bd                DateTime                @db.Timestamp(6)
+  ngay_kt                DateTime                @db.Timestamp(6)
+  han_dk                 DateTime?               @db.Timestamp(6)
+  sl_toi_da              Int                     @default(1)
+  don_vi_to_chuc         String?
+  yeu_cau_tham_gia       String?
+  trang_thai             TrangThaiHoatDong       @default(cho_duyet)
+  ly_do_tu_choi          String?
+  qr                     String?                 @unique @db.VarChar(32)
+  hinh_anh               String[]
+  tep_dinh_kem           String[]
+  nguoi_tao_id           String                  @db.Uuid
+  ngay_tao               DateTime                @default(now()) @db.Timestamp(6)
+  ngay_cap_nhat          DateTime                @default(now()) @updatedAt @db.Timestamp(6)
+  co_chung_chi           Boolean                 @default(false)
+  hoc_ky                 HocKy                   @default(hoc_ky_1)
+  nam_hoc                String?                 @db.VarChar(15)
+  dang_ky_hd             DangKyHoatDong[]
+  diem_danh              DiemDanh[]
+  loai_hd                LoaiHoatDong            @relation(fields: [loai_hd_id], references: [id])
+  nguoi_tao              NguoiDung               @relation("NguoiTaoHoatDong", fields: [nguoi_tao_id], references: [id])
+
+  @@map("hoat_dong")
+}
+
+model DangKyHoatDong {
+  id            String          @id @default(uuid()) @db.Uuid
+  sv_id         String          @db.Uuid
+  hd_id         String          @db.Uuid
+  ngay_dang_ky  DateTime        @default(now()) @db.Timestamp(6)
+  trang_thai_dk TrangThaiDangKy @default(cho_duyet)
+  ly_do_dk      String?
+  ly_do_tu_choi String?
+  ngay_duyet    DateTime?       @db.Timestamp(6)
+  ghi_chu       String?
+  hoat_dong     HoatDong        @relation(fields: [hd_id], references: [id])
+  sinh_vien     SinhVien        @relation(fields: [sv_id], references: [id])
+
+  @@unique([sv_id, hd_id])
+  @@map("dang_ky_hoat_dong")
+}
+
+model DiemDanh {
+  id                  String             @id @default(uuid()) @db.Uuid
+  nguoi_diem_danh_id  String             @db.Uuid
+  sv_id               String             @db.Uuid
+  hd_id               String             @db.Uuid
+  tg_diem_danh        DateTime           @default(now()) @db.Timestamp(6)
+  phuong_thuc         PhuongThucDiemDanh @default(qr)
+  trang_thai_tham_gia TrangThaiThamGia   @default(co_mat)
+  ghi_chu             String?
+  dia_chi_ip          String?            @db.Inet
+  vi_tri_gps          String?
+  xac_nhan_tham_gia   Boolean            @default(true)
+  hoat_dong           HoatDong           @relation(fields: [hd_id], references: [id])
+  nguoi_diem_danh     NguoiDung          @relation("NguoiDiemDanh", fields: [nguoi_diem_danh_id], references: [id])
+  sinh_vien           SinhVien           @relation(fields: [sv_id], references: [id])
+
+  @@unique([sv_id, hd_id])
+  @@map("diem_danh")
+}
+
+model LoaiThongBao {
+  id          String     @id @default(uuid()) @db.Uuid
+  ten_loai_tb String     @unique @db.VarChar(50)
+  mo_ta       String?
+  thong_baos  ThongBao[]
+
+  @@map("loai_thong_bao")
+}
+
+model ThongBao {
+  id              String        @id @default(uuid()) @db.Uuid
+  tieu_de         String        @db.VarChar(200)
+  noi_dung        String
+  loai_tb_id      String        @db.Uuid
+  nguoi_gui_id    String        @db.Uuid
+  nguoi_nhan_id   String        @db.Uuid
+  da_doc          Boolean       @default(false)
+  muc_do_uu_tien  MucDoUuTien   @default(trung_binh)
+  ngay_gui        DateTime      @default(now()) @db.Timestamp(6)
+  ngay_doc        DateTime?     @db.Timestamp(6)
+  trang_thai_gui  TrangThaiGui?
+  phuong_thuc_gui PhuongThucGui @default(email)
+  loai_tb         LoaiThongBao  @relation(fields: [loai_tb_id], references: [id])
+  nguoi_gui       NguoiDung     @relation("NguoiGuiThongBao", fields: [nguoi_gui_id], references: [id])
+  nguoi_nhan      NguoiDung     @relation("NguoiNhanThongBao", fields: [nguoi_nhan_id], references: [id])
+
+  @@map("thong_bao")
+}
+
+
+enum GioiTinh {
+  nam
+  nu
+  khac
+}
+
+enum TrangThaiTaiKhoan {
+  hoat_dong
+  khong_hoat_dong
+  khoa
+}
+
+enum TrangThaiHoatDong {
+  cho_duyet
+  da_duyet
+  tu_choi
+  da_huy
+  ket_thuc
+}
+
+enum TrangThaiDangKy {
+  cho_duyet
+  da_duyet
+  tu_choi
+  da_tham_gia
+}
+
+enum PhuongThucDiemDanh {
+  qr
+  ma_vach
+  truyen_thong
+}
+
+enum TrangThaiThamGia {
+  co_mat
+  vang_mat
+  muon
+  ve_som
+}
+
+enum MucDoUuTien {
+  thap
+  trung_binh
+  cao
+  khan_cap
+}
+
+enum TrangThaiGui {
+  cho_gui
+  da_gui
+  that_bai
+}
+
+enum PhuongThucGui {
+  email
+  sdt
+  trong_he_thong
+}
+
+enum HocKy {
+  hoc_ky_1
+  hoc_ky_2
+}

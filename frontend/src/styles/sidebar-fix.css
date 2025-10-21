@@ -1,0 +1,249 @@
+/* CSS Patch để khắc phục lỗi "nhảy nhảy màn hình" cho sidebar cũ */
+/* Không cần thay đổi code JavaScript, chỉ cần thêm CSS này */
+
+/* Fix layout shift cho sidebar container */
+.sidebar-container {
+  width: 16rem !important; /* 256px */
+  height: 100vh !important;
+  position: fixed !important;
+  left: 0 !important;
+  top: 0 !important;
+  background-color: white !important;
+  border-right: 1px solid #e5e7eb !important;
+  z-index: 1000 !important;
+  overflow: hidden !important;
+  transform: translateZ(0) !important; /* Hardware acceleration */
+  will-change: auto !important;
+  backface-visibility: hidden !important;
+}
+
+/* Fix layout shift cho sidebar brand */
+.sidebar-brand {
+  height: 64px !important;
+  padding: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  background-color: white !important;
+  flex-shrink: 0 !important;
+  min-height: 64px !important;
+}
+
+/* Fix layout shift cho sidebar menu */
+.sidebar-menu {
+  flex: 1 !important;
+  padding: 16px 8px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  min-height: calc(100vh - 64px) !important;
+}
+
+/* Fix layout shift cho sidebar menu title */
+.sidebar-menu-title {
+  padding: 0 8px !important;
+  font-size: 12px !important;
+  color: #9ca3af !important;
+  text-transform: uppercase !important;
+  font-weight: 600 !important;
+  margin-bottom: 8px !important;
+}
+
+/* Fix layout shift cho sidebar menu items */
+.sidebar-menu-items {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  contain: layout style paint !important; /* CSS containment */
+  transform: translateZ(0) !important; /* Hardware acceleration */
+}
+
+/* Fix layout shift cho sidebar menu item */
+.sidebar-menu-item {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 12px 16px !important;
+  border-radius: 8px !important;
+  text-decoration: none !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  min-height: 44px !important; /* Fixed height để tránh layout shift */
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  transform: translateZ(0) !important; /* Hardware acceleration */
+  backface-visibility: hidden !important;
+  will-change: background-color, color !important;
+}
+
+/* Fix hover state */
+.sidebar-menu-item:hover {
+  background-color: #f9fafb !important;
+}
+
+/* Fix active state */
+.sidebar-menu-item.active {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+/* Fix indicator bar */
+.sidebar-indicator {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  height: 100% !important;
+  width: 3px !important;
+  background-color: #8b5cf6 !important;
+  border-radius: 0 2px 2px 0 !important;
+  opacity: 0 !important;
+  transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transform: translateZ(0) !important; /* Hardware acceleration */
+  backface-visibility: hidden !important;
+  will-change: opacity !important;
+}
+
+/* Fix active indicator */
+.sidebar-menu-item.active .sidebar-indicator {
+  opacity: 1 !important;
+}
+
+/* Fix hover indicator */
+.sidebar-menu-item:hover .sidebar-indicator {
+  opacity: 0.5 !important;
+}
+
+/* Fix menu item content */
+.sidebar-menu-item-content {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  flex: 1 !important;
+}
+
+/* Fix menu item text */
+.sidebar-menu-item-text {
+  font-size: 14px !important;
+  font-weight: 500 !important;
+}
+
+/* Fix group container */
+.sidebar-group {
+  margin-top: 16px !important;
+}
+
+/* Fix group button */
+.sidebar-group-button {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 12px 16px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #6b7280 !important;
+  text-transform: uppercase !important;
+  background: none !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transform: translateZ(0) !important; /* Hardware acceleration */
+  backface-visibility: hidden !important;
+  will-change: color !important;
+}
+
+/* Fix group button hover */
+.sidebar-group-button:hover {
+  color: #374151 !important;
+}
+
+/* Fix group content */
+.sidebar-group-content {
+  margin-top: 8px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+}
+
+/* Fix main content area để tránh overlap */
+/* REMOVED: Conflicts with dynamic sidebar toggle
+main {
+  margin-left: 256px !important;
+}
+*/
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .sidebar-container {
+    width: 240px !important;
+  }
+  
+  /* REMOVED: Conflicts with dynamic sidebar toggle
+  main {
+    margin-left: 240px !important;
+  }
+  */
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .sidebar-container {
+    background-color: #1f2937 !important;
+    border-right-color: #374151 !important;
+  }
+  
+  .sidebar-brand {
+    background-color: #1f2937 !important;
+    border-bottom-color: #374151 !important;
+  }
+  
+  .sidebar-menu-title {
+    color: #9ca3af !important;
+  }
+  
+  .sidebar-menu-item {
+    color: #d1d5db !important;
+  }
+  
+  .sidebar-menu-item:hover {
+    background-color: #374151 !important;
+  }
+  
+  .sidebar-menu-item.active {
+    background-color: #4b5563 !important;
+    color: #f9fafb !important;
+  }
+  
+  .sidebar-group-button {
+    color: #9ca3af !important;
+  }
+  
+  .sidebar-group-button:hover {
+    color: #d1d5db !important;
+  }
+}
+
+/* Force hardware acceleration cho tất cả elements */
+.sidebar-container *,
+.sidebar-container *::before,
+.sidebar-container *::after {
+  transform: translateZ(0) !important;
+  backface-visibility: hidden !important;
+}
+
+/* Prevent layout shift during transitions */
+.sidebar-menu-item,
+.sidebar-indicator,
+.sidebar-group-button {
+  contain: layout style paint !important;
+}
+
+/* Smooth scrolling */
+.sidebar-menu {
+  scroll-behavior: smooth !important;
+  -webkit-overflow-scrolling: touch !important;
+}

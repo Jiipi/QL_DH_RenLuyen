@@ -1,0 +1,20 @@
+-- Idempotent fix to ensure extended student profile columns exist
+ALTER TABLE "public"."sinh_vien" ADD COLUMN IF NOT EXISTS "avatar_url" TEXT;
+ALTER TABLE "public"."sinh_vien" ADD COLUMN IF NOT EXISTS "dia_chi_gia_dinh" TEXT;
+ALTER TABLE "public"."sinh_vien" ADD COLUMN IF NOT EXISTS "diem_thpt" DECIMAL(4,2);
+ALTER TABLE "public"."sinh_vien" ADD COLUMN IF NOT EXISTS "email_phu" VARCHAR(100);
+ALTER TABLE "public"."sinh_vien" ADD COLUMN IF NOT EXISTS "ky_nang" TEXT;
+ALTER TABLE "public"."sinh_vien" ADD COLUMN IF NOT EXISTS "muc_tieu" TEXT;
+ALTER TABLE "public"."sinh_vien" ADD COLUMN IF NOT EXISTS "mui_gio" VARCHAR(50) DEFAULT 'Asia/Ho_Chi_Minh';
+ALTER TABLE "public"."sinh_vien" ADD COLUMN IF NOT EXISTS "nam_tot_nghiep_thpt" INTEGER;
+ALTER TABLE "public"."sinh_vien" ADD COLUMN IF NOT EXISTS "ngay_cap_nhat" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "public"."sinh_vien" ADD COLUMN IF NOT EXISTS "ngon_ngu" VARCHAR(5) DEFAULT 'vi';
+ALTER TABLE "public"."sinh_vien" ADD COLUMN IF NOT EXISTS "sdt_cha" VARCHAR(15);
+ALTER TABLE "public"."sinh_vien" ADD COLUMN IF NOT EXISTS "sdt_khan_cap" VARCHAR(15);
+ALTER TABLE "public"."sinh_vien" ADD COLUMN IF NOT EXISTS "sdt_me" VARCHAR(15);
+ALTER TABLE "public"."sinh_vien" ADD COLUMN IF NOT EXISTS "so_thich" TEXT;
+ALTER TABLE "public"."sinh_vien" ADD COLUMN IF NOT EXISTS "ten_cha" VARCHAR(100);
+ALTER TABLE "public"."sinh_vien" ADD COLUMN IF NOT EXISTS "ten_me" VARCHAR(100);
+ALTER TABLE "public"."sinh_vien" ADD COLUMN IF NOT EXISTS "thong_bao_email" BOOLEAN DEFAULT true;
+ALTER TABLE "public"."sinh_vien" ADD COLUMN IF NOT EXISTS "thong_bao_sdt" BOOLEAN DEFAULT false;
+ALTER TABLE "public"."sinh_vien" ADD COLUMN IF NOT EXISTS "truong_thpt" VARCHAR(200);

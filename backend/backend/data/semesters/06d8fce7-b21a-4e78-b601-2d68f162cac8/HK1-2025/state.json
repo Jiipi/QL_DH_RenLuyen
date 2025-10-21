@@ -1,0 +1,14 @@
+{
+  "classId": "06d8fce7-b21a-4e78-b601-2d68f162cac8",
+  "semester": "hoc_ky_1",
+  "year": "2025",
+  "state": "LOCKED_HARD",
+  "lock_level": "HARD",
+  "proposed_by": "0cbc9113-e828-4dc9-8f84-2717dd76996e",
+  "approved_by": null,
+  "closed_by": "67371567-ac1e-4d29-b64e-322f6ca334a8",
+  "closed_at": "2025-10-20T18:21:55.791Z",
+  "grace_until": null,
+  "version": 17,
+  "snapshot_checksum": null
+}

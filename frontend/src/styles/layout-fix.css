@@ -1,0 +1,58 @@
+/* Layout adjustments for OptimizedSidebar */
+
+/* Ensure main content is not hidden behind fixed sidebar */
+.flex {
+  display: flex;
+}
+
+.flex-1 {
+  flex: 1 1 0%;
+}
+
+/* Add left margin to main content when using OptimizedSidebar */
+/* REMOVED: Conflicts with dynamic teacher sidebar toggle
+main.flex-1 {
+  margin-left: 256px;
+  width: calc(100% - 256px);
+  min-height: 100vh;
+}
+*/
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  /* REMOVED: Conflicts with dynamic teacher sidebar toggle
+  main.flex-1 {
+    margin-left: 240px;
+    width: calc(100% - 240px);
+  }
+  */
+}
+
+/* Ensure proper layout for different page structures */
+.min-h-screen {
+  min-height: 100vh;
+}
+
+.bg-gray-50 {
+  background-color: #f9fafb;
+}
+
+/* Fix for pages using React.createElement structure */
+/* REMOVED: Conflicts with dynamic teacher sidebar toggle
+div[className*="min-h-screen"] > div[className*="flex"] {
+  position: relative;
+}
+
+div[className*="min-h-screen"] > div[className*="flex"] > main {
+  margin-left: 256px;
+  width: calc(100% - 256px);
+  padding: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  div[className*="min-h-screen"] > div[className*="flex"] > main {
+    margin-left: 240px;
+    width: calc(100% - 240px);
+  }
+}
+*/

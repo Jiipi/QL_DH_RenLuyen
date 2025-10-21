@@ -1,0 +1,18 @@
+[Unit]
+Description=GitHub Webhook Auto Deploy Service
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/var/www/hoatdongrenluyen
+Environment=NODE_ENV=production
+Environment=WEBHOOK_SECRET=your-secure-webhook-secret-here
+ExecStart=/usr/bin/node /var/www/hoatdongrenluyen/scripts/webhook-server.js
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/webhook-server.log
+StandardError=append:/var/log/webhook-server-error.log
+
+[Install]
+WantedBy=multi-user.target

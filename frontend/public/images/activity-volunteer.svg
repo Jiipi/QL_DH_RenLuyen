@@ -1,0 +1,16 @@
+<!-- Volunteer Activity -->
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="volunteer" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10B981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#volunteer)"/>
+  <text x="400" y="250" font-family="Arial, sans-serif" font-size="48" fill="white" text-anchor="middle" font-weight="bold">
+    ❤️ TÌNH NGUYỆN
+  </text>
+  <text x="400" y="320" font-family="Arial, sans-serif" font-size="28" fill="#D1FAE5" text-anchor="middle">
+    Hoạt động cộng đồng và từ thiện
+  </text>
+</svg>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Frontend API Calls</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+        button { margin: 10px 0; padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Debug Frontend API Calls</h1>
+    
+    <div class="test-section">
+        <h3>Test "Hoạt động của tôi" API</h3>
+        <button onclick="testMyActivities()">Test /api/dashboard/activities/me</button>
+        <pre id="myActivitiesResult"></pre>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test "Danh sách hoạt động" API</h3>
+        <button onclick="testActivitiesList()">Test /api/activities</button>
+        <pre id="activitiesResult"></pre>
+    </div>
+    
+    <div class="test-section">
+        <h3>Login and Get Token</h3>
+        <button onclick="loginAndTest()">Login First</button>
+        <pre id="loginResult"></pre>
+    </div>
+
+    <script>
+        async function loginAndTest() {
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        maso: '2021003',
+                        password: 'Student@123'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    localStorage.setItem('token', data.data.token);
+                    document.getElementById('loginResult').textContent = 'Login successful! Token saved to localStorage.';
+                    document.getElementById('loginResult').className = 'success';
+                } else {
+                    document.getElementById('loginResult').textContent = 'Login failed: ' + JSON.stringify(data, null, 2);
+                    document.getElementById('loginResult').className = 'error';
+                }
+            } catch (error) {
+                document.getElementById('loginResult').textContent = 'Login error: ' + error.message;
+                document.getElementById('loginResult').className = 'error';
+            }
+        }
+
+        async function testMyActivities() {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    document.getElementById('myActivitiesResult').textContent = 'No token found. Please login first.';
+                    document.getElementById('myActivitiesResult').className = 'error';
+                    return;
+                }
+
+                console.log('Making request to /api/dashboard/activities/me with token:', token.substring(0, 20) + '...');
+
+                const response = await fetch('/api/dashboard/activities/me', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+
+                const data = await response.json();
+                
+                document.getElementById('myActivitiesResult').textContent = JSON.stringify({
+                    status: response.status,
+                    response: data
+                }, null, 2);
+                
+                document.getElementById('myActivitiesResult').className = response.status === 200 ? 'success' : 'error';
+
+            } catch (error) {
+                document.getElementById('myActivitiesResult').textContent = 'Error: ' + error.message;
+                document.getElementById('myActivitiesResult').className = 'error';
+                console.error('MyActivities error:', error);
+            }
+        }
+
+        async function testActivitiesList() {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    document.getElementById('activitiesResult').textContent = 'No token found. Please login first.';
+                    document.getElementById('activitiesResult').className = 'error';
+                    return;
+                }
+
+                console.log('Making request to /api/activities with token:', token.substring(0, 20) + '...');
+
+                const response = await fetch('/api/activities', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+
+                const data = await response.json();
+                
+                document.getElementById('activitiesResult').textContent = JSON.stringify({
+                    status: response.status,
+                    response: data
+                }, null, 2);
+                
+                document.getElementById('activitiesResult').className = response.status === 200 ? 'success' : 'error';
+
+            } catch (error) {
+                document.getElementById('activitiesResult').textContent = 'Error: ' + error.message;
+                document.getElementById('activitiesResult').className = 'error';
+                console.error('Activities error:', error);
+            }
+        }
+
+        // Auto-run tests if token exists
+        window.onload = function() {
+            const token = localStorage.getItem('token');
+            if (token) {
+                console.log('Token found, auto-testing APIs...');
+                setTimeout(() => {
+                    testMyActivities();
+                    testActivitiesList();
+                }, 1000);
+            }
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,177 @@
+services:
+  db:
+    image: postgres:15
+    container_name: dacn_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: abc
+      POSTGRES_DB: Web_QuanLyDiemRenLuyen
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - dacn_network
+    ports:
+      - "5432:5432"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # Production app (backend serves built frontend). Enable with profile 'prod'.
+  app:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: dacn_app
+    depends_on:
+      - db
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://admin:abc@db:5432/Web_QuanLyDiemRenLuyen?schema=public
+      JWT_SECRET: supersecret_in_docker_change_me
+      JWT_EXPIRES_IN: 1d
+      CORS_ORIGIN: http://localhost:3001
+    ports:
+      - "3001:3001"
+    volumes:
+      - type: bind
+        source: ./backend/logs
+        target: /app/backend/logs
+    networks:
+      - dacn_network
+    profiles:
+      - prod
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "10"
+
+  # Backend in watch mode for development.
+  backend-dev:
+    image: node:18-alpine
+    container_name: dacn_backend_dev
+    working_dir: /app
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://admin:abc@db:5432/Web_QuanLyDiemRenLuyen?schema=public
+      JWT_SECRET: supersecret_in_docker_change_me
+      JWT_EXPIRES_IN: 1d
+      CORS_ORIGIN: http://localhost:3000
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./backend:/app
+      - backend_node_modules:/app/node_modules
+    depends_on:
+      - db
+    ports:
+      - "3001:3001"
+    networks:
+      - dacn_network
+    command: >-
+      sh -lc "
+      npm install && 
+      ATTEMPTS=0; 
+      until npx prisma migrate deploy; do 
+        ATTEMPTS=$$((ATTEMPTS+1)); 
+        if [ $$ATTEMPTS -gt 20 ]; then echo 'DB not ready after retries'; exit 1; fi; 
+        echo 'Waiting for DB...'; sleep 3; 
+      done && 
+      npx prisma generate || true && 
+      npm run dev"
+    profiles:
+      - dev
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # Prisma Studio service
+  prisma-studio:
+    image: node:18-alpine
+    container_name: dacn_prisma_studio
+    working_dir: /app
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://admin:abc@db:5432/Web_QuanLyDiemRenLuyen?schema=public
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+    ports:
+      - "5555:5555"
+    networks:
+      - dacn_network
+    command: >-
+      sh -lc "npm install --silent --no-progress || true; npx prisma studio --schema prisma/schema.prisma --hostname 0.0.0.0 --port 5555 --browser none"
+    # No profile so it appears as a standalone service in Docker Desktop
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  # Frontend dev server (React)
+  frontend-dev:
+    image: node:18-alpine
+    container_name: dacn_frontend_dev
+    working_dir: /app
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+      BROWSER: "none"
+      REACT_APP_API_URL: "http://localhost:3001/api"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      - backend-dev
+    ports:
+      - "3000:3000"
+    networks:
+      - dacn_network
+    command: sh -lc "npm install && npm start"
+    profiles:
+      - dev
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # Lightweight real-time log viewer (development only)
+  dozzle:
+    image: amir20/dozzle:v7
+    container_name: dacn_dozzle
+    ports:
+      - "9999:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - dacn_network
+    profiles:
+      - dev
+    environment:
+      DOZZLE_BASE: /
+      DOZZLE_LEVEL: info
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+volumes:
+  pgdata:
+  backend_node_modules:
+  frontend_node_modules:
+
+networks:
+  dacn_network:
+    driver: bridge

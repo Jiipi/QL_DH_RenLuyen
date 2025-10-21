@@ -1,0 +1,14 @@
+{
+  "classId": "b3220cd5-b6f5-4252-a98b-aad44e1f858d",
+  "semester": "hoc_ky_1",
+  "year": "2025",
+  "state": "LOCKED_SOFT",
+  "lock_level": "SOFT",
+  "proposed_by": "67371567-ac1e-4d29-b64e-322f6ca334a8",
+  "approved_by": null,
+  "closed_by": "67371567-ac1e-4d29-b64e-322f6ca334a8",
+  "closed_at": "2025-10-20T16:29:47.533Z",
+  "grace_until": "2025-10-20T17:29:47.533Z",
+  "version": 3,
+  "snapshot_checksum": "8f0f603c148899c98a5e27870e9f956d9084d4533baacec192a2519c38ab4224"
+}

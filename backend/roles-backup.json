@@ -1,0 +1,123 @@
+[
+  {
+    "id": "d1acffc9-46ca-4f39-b6f7-6dfd5a481690",
+    "ten_vt": "SINH_VIÊN",
+    "mo_ta": "Vai trò SINH_VIÊN",
+    "quyen_han": [
+      "activities.register",
+      "activities.attend",
+      "scores.read",
+      "activities.read",
+      "profile.read",
+      "profile.update",
+      "registrations.read"
+    ],
+    "ngay_tao": "2025-10-04T09:26:07.042Z"
+  },
+  {
+    "id": "88b26e9e-7805-499b-a35b-1797bc6ea5bf",
+    "ten_vt": "ADMIN",
+    "mo_ta": "Vai trò ADMIN",
+    "quyen_han": [
+      "users.read",
+      "users.write",
+      "users.delete",
+      "activities.read",
+      "activities.write",
+      "activities.delete",
+      "activities.approve",
+      "activities.create",
+      "registrations.read",
+      "registrations.write",
+      "registrations.delete",
+      "attendance.read",
+      "attendance.write",
+      "attendance.delete",
+      "reports.read",
+      "reports.export",
+      "roles.read",
+      "roles.write",
+      "roles.delete",
+      "notifications.read",
+      "notifications.write",
+      "notifications.delete",
+      "students.read",
+      "students.update",
+      "system.manage",
+      "system.configure",
+      "semester.close.propose",
+      "semester.lock.soft",
+      "semester.lock.hard",
+      "semester.lock.rollback"
+    ],
+    "ngay_tao": "2025-10-04T09:26:07.014Z"
+  },
+  {
+    "id": "89df2525-0250-4d60-a7e9-3ce5b0255ec3",
+    "ten_vt": "GIẢNG_VIÊN",
+    "mo_ta": "Vai trò GIẢNG_VIÊN",
+    "quyen_han": [
+      "activities.read",
+      "activities.write",
+      "activities.approve",
+      "activities.create",
+      "registrations.read",
+      "registrations.write",
+      "attendance.read",
+      "attendance.write",
+      "reports.read",
+      "reports.export",
+      "students.read",
+      "students.update",
+      "notifications.write",
+      "profile.update",
+      "profile.read",
+      "semester.close.propose",
+      "semester.lock.soft",
+      "semester.lock.rollback"
+    ],
+    "ngay_tao": "2025-10-04T09:26:07.028Z"
+  },
+  {
+    "id": "8153e3db-b6eb-4c35-be4e-0bb9bafd0cd5",
+    "ten_vt": "LỚP_TRƯỞNG",
+    "mo_ta": "Vai trò LỚP_TRƯỞNG",
+    "quyen_han": [
+      "activities.create",
+      "registrations.read",
+      "registrations.write",
+      "attendance.read",
+      "reports.read",
+      "students.read",
+      "classmates.read",
+      "classmates.assist",
+      "notifications.write",
+      "profile.read",
+      "profile.update",
+      "activities.read",
+      "semester.close.propose"
+    ],
+    "ngay_tao": "2025-10-04T09:26:07.035Z"
+  },
+  {
+    "id": "cf020767-2ddc-43f9-bbe7-6c1aab45f301",
+    "ten_vt": "GIANG_VIEN",
+    "mo_ta": "GIANG_VIEN",
+    "quyen_han": null,
+    "ngay_tao": "2025-10-20T19:02:58.691Z"
+  },
+  {
+    "id": "0828e91f-5e5a-47a8-9ae4-433c2c5bf48f",
+    "ten_vt": "LOP_TRUONG",
+    "mo_ta": "LOP_TRUONG",
+    "quyen_han": null,
+    "ngay_tao": "2025-10-20T19:02:58.777Z"
+  },
+  {
+    "id": "73385e23-1754-4260-a6c3-ad73f1490ff1",
+    "ten_vt": "SINH_VIEN",
+    "mo_ta": "SINH_VIEN",
+    "quyen_han": null,
+    "ngay_tao": "2025-10-20T19:02:58.864Z"
+  }
+]

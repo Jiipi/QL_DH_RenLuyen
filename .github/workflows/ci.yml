@@ -1,0 +1,23 @@
+﻿name: CI
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install frontend
+        working-directory: giao-dien
+        run: npm ci || npm i
+      - name: Build frontend
+        working-directory: giao-dien
+        run: npm run build --if-present
+      - name: Install backend
+        working-directory: hau-truong
+        run: npm ci || npm i
+      - name: Format Prisma schema
+        working-directory: hau-truong
+        run: npx prisma format
