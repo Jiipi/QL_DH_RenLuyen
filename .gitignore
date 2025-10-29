@@ -87,3 +87,4 @@ pgdata
 test-results/
 *.test-results/
 .last-run.json
+QL_DH_RenLuyen/
