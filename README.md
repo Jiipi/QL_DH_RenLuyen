@@ -55,6 +55,16 @@ Sau khi chạy Setup và chọn "Khởi tạo dữ liệu mẫu", bạn có th�
 
 ---
 
+---
+Giao diện ứng dụng:
+	<img width="1919" height="1026" alt="image" src="https://github.com/user-attachments/assets/e162449b-629f-46f4-8012-13d41a7f3806" />
+	<img width="1870" height="983" alt="image" src="https://github.com/user-attachments/assets/c3bd29c2-b6e0-49bd-a9fa-7959668735bf" />
+	<img width="1871" height="982" alt="image" src="https://github.com/user-attachments/assets/163b9129-1cbe-43b0-8cbb-730160c62c64" />
+	<img width="1877" height="986" alt="image" src="https://github.com/user-attachments/assets/4c3e6813-af6c-4e83-bb90-753db5f2d4b4" />
+	<img width="1874" height="979" alt="image" src="https://github.com/user-attachments/assets/04901729-6609-4de6-b276-5f9cde4a98fc" />
+	<img width="1874" height="982" alt="image" src="https://github.com/user-attachments/assets/0d645f77-37e2-4637-a2a3-a0deb64f1d99" />
+---
+
 ## 📞 Thông tin liên hệ nhóm tác giả
 
 Mọi thắc mắc về cài đặt, vận hành hoặc báo lỗi, vui lòng liên hệ nhóm phát triển:
